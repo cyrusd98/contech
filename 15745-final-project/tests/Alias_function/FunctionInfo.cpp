@@ -9,12 +9,13 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 
 #include <iostream>
+#include <set>
 
 using namespace llvm;
+using namespace std;
 
-namespace {
-  class FunctionInfo : public FunctionPass {
-  public:
+class FunctionInfo : public FunctionPass {
+public:
     static char ID;
     FunctionInfo() : FunctionPass(ID) { }
     ~FunctionInfo() { }
@@ -35,32 +36,38 @@ namespace {
     // Print output for each function
     bool runOnFunction(Function &F) override {
       // outs() << "name" << ",\t" << "args" << ",\t" << "calls" << ",\t" << "bbs" << ",\t" << "insts" << "\n";
-          auto AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-          for (BasicBlock &BB: F ) {
-              for (Instruction &I: BB) { 
-                 if (I.mayReadOrWriteMemory()) {
-                     outs() << I << "\n";
-                     if (AA->isNoAlias(I.getOperand(0),I.getOperand(1)))
-                     {
-                        errs() << I.getOperand(0);
-                        errs() << " and ";
-                        errs() << I.getOperand(1);
-                        errs() << " are NOT aliases\n";
-                     }
-                     else
-                     {
-                    	errs() << I.getOperand(0);
-                    	errs() << " and ";
-                    	errs() << I.getOperand(1);
-                    	errs() << " are aliases of one another\n";
-                    }
-              	}	
+      auto AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+      set<Value*> all_addr;
+      for (BasicBlock &BB: F) {
+          for (Instruction &I: BB) {
+            outs() << I << "\n";
+              Value *new_addr = NULL;
+              if (isa<LoadInst>(I)){
+                  new_addr = cast<LoadInst>(I).getPointerOperand();
+              } else if (isa<StoreInst>(I)){
+                  new_addr = cast<StoreInst>(I).getPointerOperand();
               }
+              
+              if (new_addr != NULL) all_addr.insert(new_addr);
           }
-	  return false;
+	    }
+
+      outs() << "\n\n\n";
+      for (auto e1 : all_addr){
+        outs() << *e1 << "\n";  
+        for (auto e2 : all_addr){
+          if (e1 != e2 && AA->isMustAlias(e1, e2)){
+            outs() << e1 << " MUST alias" << e2 << "\n";
+          }
+        } 
       }
-   }; 
-}
+
+
+
+
+      return false;
+   } 
+};
 
 // LLVM uses the address of this static member to identify the pass, so the
 // initialization value is unimportant.
