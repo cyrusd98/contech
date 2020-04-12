@@ -54,10 +54,9 @@ public:
 
       outs() << "\n\n\n";
       for (auto e1 : all_addr){
-        outs() << *e1 << "\n";  
         for (auto e2 : all_addr){
-          if (e1 != e2 && AA->isMustAlias(e1, e2)){
-            outs() << e1 << " MUST alias" << e2 << "\n";
+          if (e1 != e2){
+            outs() << *e1 << " " << AA->alias(e1, e2) << " " << *e2 << "\n";
           }
         } 
       }
