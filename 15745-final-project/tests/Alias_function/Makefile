@@ -1,4 +1,4 @@
-all: FunctionInfo.so
+all: FunctionInfo.so AAEval.so
 
 CXXFLAGS = -rdynamic $(shell llvm-config --cxxflags) -g -O0
 
