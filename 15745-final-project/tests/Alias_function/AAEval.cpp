@@ -6,7 +6,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Analysis/AliasAnalysisEvaluator.h"
+#include "AAEval.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/IR/Constants.h"
@@ -29,14 +29,13 @@
 using namespace llvm;
 using namespace std;
 
- using namespace llvm;
  
  static cl::opt<bool> PrintAll("my-print-all-alias-modref-info", cl::ReallyHidden);
  
  static cl::opt<bool> PrintNoAlias("my-print-no-aliases", cl::ReallyHidden);
  static cl::opt<bool> PrintMayAlias("my-print-may-aliases", cl::ReallyHidden);
  static cl::opt<bool> PrintPartialAlias("my-print-partial-aliases", cl::ReallyHidden);
- static cl::opt<bool> PrintMustAlias("my-print-must-aliases", cl::ReallyHidden);
+ static cl::opt<bool> PrintMustAlias("my-print-must-aliases", cl::NotHidden);
  
  static cl::opt<bool> PrintNoModRef("my-print-no-modref", cl::ReallyHidden);
  static cl::opt<bool> PrintRef("my-print-ref", cl::ReallyHidden);
@@ -427,10 +426,7 @@ namespace llvm {
 
       // Print output for each function
       bool runOnFunction(Function &F) override {
-        PassBuilder PB;
-        FunctionAnalysisManager FAM;
-        PB.registerFunctionAnalyses(FAM);
-        P->run(F, FAM);
+        P->runInternal(F, getAnalysis<AAResultsWrapperPass>().getAAResults());
         return false;
     }
 
