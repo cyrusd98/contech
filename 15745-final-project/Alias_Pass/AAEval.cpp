@@ -1,7 +1,3 @@
-// 15-745 S16 Assignment 1: FunctionInfo.cpp
-// Group:
-////////////////////////////////////////////////////////////////////////////////
-
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstVisitor.h"
@@ -29,27 +25,27 @@
 using namespace llvm;
 using namespace std;
 
+static cl::opt<bool> PrintAll("my-print-all-alias-modref-info", cl::ReallyHidden);
+
+static cl::opt<bool> PrintNoAlias("my-print-no-aliases", cl::ReallyHidden);
+static cl::opt<bool> PrintMayAlias("my-print-may-aliases", cl::ReallyHidden);
+static cl::opt<bool> PrintPartialAlias("my-print-partial-aliases", cl::ReallyHidden);
+static cl::opt<bool> PrintMustAlias("my-print-must-aliases");
+
+static cl::opt<bool> PrintNoModRef("my-print-no-modref", cl::ReallyHidden);
+static cl::opt<bool> PrintRef("my-print-ref", cl::ReallyHidden);
+static cl::opt<bool> PrintMod("my-print-mod", cl::ReallyHidden);
+static cl::opt<bool> PrintModRef("my-print-modref", cl::ReallyHidden);
+static cl::opt<bool> PrintMust("my-print-must", cl::ReallyHidden);
+static cl::opt<bool> PrintMustRef("my-print-mustref", cl::ReallyHidden);
+static cl::opt<bool> PrintMustMod("my-print-mustmod", cl::ReallyHidden);
+static cl::opt<bool> PrintMustModRef("my-print-mustmodref", cl::ReallyHidden);
+
+static cl::opt<bool> EvalAAMD("my-evaluate-aa-metadata", cl::ReallyHidden);
  
- static cl::opt<bool> PrintAll("my-print-all-alias-modref-info", cl::ReallyHidden);
- 
- static cl::opt<bool> PrintNoAlias("my-print-no-aliases", cl::ReallyHidden);
- static cl::opt<bool> PrintMayAlias("my-print-may-aliases", cl::ReallyHidden);
- static cl::opt<bool> PrintPartialAlias("my-print-partial-aliases", cl::ReallyHidden);
- static cl::opt<bool> PrintMustAlias("my-print-must-aliases", cl::NotHidden);
- 
- static cl::opt<bool> PrintNoModRef("my-print-no-modref", cl::ReallyHidden);
- static cl::opt<bool> PrintRef("my-print-ref", cl::ReallyHidden);
- static cl::opt<bool> PrintMod("my-print-mod", cl::ReallyHidden);
- static cl::opt<bool> PrintModRef("my-print-modref", cl::ReallyHidden);
- static cl::opt<bool> PrintMust("my-print-must", cl::ReallyHidden);
- static cl::opt<bool> PrintMustRef("my-print-mustref", cl::ReallyHidden);
- static cl::opt<bool> PrintMustMod("my-print-mustmod", cl::ReallyHidden);
- static cl::opt<bool> PrintMustModRef("my-print-mustmodref", cl::ReallyHidden);
- 
- static cl::opt<bool> EvalAAMD("my-evaluate-aa-metadata", cl::ReallyHidden);
- 
- static void PrintResults(AliasResult AR, bool P, const Value *V1,
+static void PrintResults(AliasResult AR, bool P, const Value *V1,
                           const Value *V2, const Module *M) {
+    
     if (PrintAll || P) {
         std::string o1, o2;
         raw_string_ostream os1(o1), os2(o2);
@@ -61,45 +57,40 @@ using namespace std;
         }
         errs() << "  " << AR << ":\t" << o1 << ", " << o2 << "\n";
     }
- }
+}
  
- static inline void PrintModRefResults(const char *Msg, bool P, Instruction *I,
+static inline void PrintModRefResults(const char *Msg, bool P, Instruction *I,
                                        Value *Ptr, Module *M) {
     if (PrintAll || P) {
         errs() << "  " << Msg << ":  Ptr: ";
         Ptr->printAsOperand(errs(), true, M);
         errs() << "\t<->" << *I << '\n';
     }
- }
+}
  
- static inline void PrintModRefResults(const char *Msg, bool P, CallBase *CallA,
+static inline void PrintModRefResults(const char *Msg, bool P, CallBase *CallA,
                                        CallBase *CallB, Module *M) {
     if (PrintAll || P) {
         errs() << "  " << Msg << ": " << *CallA << " <-> " << *CallB << '\n';
     }
- }
+}
  
- static inline void PrintLoadStoreResults(AliasResult AR, bool P,
+static inline void PrintLoadStoreResults(AliasResult AR, bool P,
                                           const Value *V1, const Value *V2,
                                           const Module *M) {
     if (PrintAll || P) {
         errs() << "  " << AR << ": " << *V1 << " <-> " << *V2 << '\n';
     }
- }
+}
  
- static inline bool isInterestingPointer(Value *V) {
+static inline bool isInterestingPointer(Value *V) {
     return (V->getType()->isPointerTy()
            && !isa<ConstantPointerNull>(V));
- }
- 
- PreservedAnalyses AAEvaluator::run(Function &F, FunctionAnalysisManager &AM) {
-    runInternal(F, AM.getResult<AAManager>(F));
-    return PreservedAnalyses::all();
- }
+}
 
- void AAEvaluator::runInternal(Function &F, AAResults &AA) {
+void AAEvaluator::runInternal(Function &F, AAResults &AA) {
     const DataLayout &DL = F.getParent()->getDataLayout();
- 
+    errs() << "\n\n\n hello\n\n\n";
     ++FunctionCount;
 
     SetVector<Value *> Pointers;
@@ -160,7 +151,7 @@ using namespace std;
             << " pointers, " << Calls.size() << " call sites\n";
     }
  
-   // iterate over the worklist, and run the full (n^2)/2 disambiguations
+    // iterate over the worklist, and run the full (n^2)/2 disambiguations
     for (SetVector<Value *>::iterator I1 = Pointers.begin(), E = Pointers.end();
         I1 != E; ++I1) {
         auto I1Size = LocationSize::unknown();
@@ -192,6 +183,7 @@ using namespace std;
                     ++PartialAliasCount;
                     break;
                 case MustAlias:
+                    MustAliasPairs.push_back(make_pair(*I1, *I2));
                     PrintResults(AR, PrintMustAlias, *I1, *I2, F.getParent());
                     ++MustAliasCount;
                     break;
@@ -219,6 +211,7 @@ using namespace std;
                         ++PartialAliasCount;
                         break;
                     case MustAlias:
+                        MustAliasPairs.push_back(make_pair(Load, Store));
                         PrintLoadStoreResults(AR, PrintMustAlias, Load, Store, F.getParent());
                         ++MustAliasCount;
                         break;
@@ -246,6 +239,7 @@ using namespace std;
                     ++PartialAliasCount;
                     break;
                     case MustAlias:
+                    MustAliasPairs.push_back(make_pair(*I1, *I2));
                     PrintLoadStoreResults(AR, PrintMustAlias, *I1, *I2, F.getParent());
                     ++MustAliasCount;
                     break;
@@ -254,7 +248,7 @@ using namespace std;
         }
     }
  
-   // Mod/ref alias analysis: compare all pairs of calls and values
+    // Mod/ref alias analysis: compare all pairs of calls and values
     for (CallBase *Call : Calls) {
         for (auto Pointer : Pointers) {
             auto Size = LocationSize::unknown();
@@ -355,13 +349,13 @@ using namespace std;
     }
 }
  
- static void PrintPercent(int64_t Num, int64_t Sum) {
+static void PrintPercent(int64_t Num, int64_t Sum) {
     errs() << "(" << Num * 100LL / Sum << "." << ((Num * 1000LL / Sum) % 10)
             << "%)\n";
- }
+}
  
- //Destructor for AAEvaluator class
- AAEvaluator::~AAEvaluator() {
+//Destructor for AAEvaluator class
+AAEvaluator::~AAEvaluator() {
     if (FunctionCount == 0) {
         return;
     }
@@ -372,8 +366,7 @@ using namespace std;
     errs() << "===== Alias Analysis Evaluator Report =====\n";
     if (AliasSum == 0) {
         errs() << "  Alias Analysis Evaluator Summary: No pointers!\n";
-    } 
-    else {
+    } else {
         errs() << "  " << AliasSum << " Total Alias Queries Performed\n";
         
         errs() << "  " << NoAliasCount << " no alias responses ";
@@ -393,16 +386,15 @@ using namespace std;
                     << MayAliasCount * 100 / AliasSum << "%/"
                     << PartialAliasCount * 100 / AliasSum << "%/"
                     << MustAliasCount * 100 / AliasSum << "%\n";
-   }
+    }
  
-   // Display the summary for mod/ref analysis
+    // Display the summary for mod/ref analysis
     int64_t ModRefSum = NoModRefCount + RefCount + ModCount + ModRefCount +
                         MustCount + MustRefCount + MustModCount + MustModRefCount;
     if (ModRefSum == 0) {
         errs() << "  Alias Analysis Mod/Ref Evaluator Summary: no "
                     "mod/ref!\n";
-    } 
-    else {
+    } else {
         errs() << "  " << ModRefSum << " Total ModRef Queries Performed\n";
 
         errs() << "  " << NoModRefCount << " no mod/ref responses ";
@@ -440,43 +432,3 @@ using namespace std;
     }
 }
 
-namespace llvm {
-    class FunctionInfo : public FunctionPass {
-        std::unique_ptr<AAEvaluator> P;
-    public:
-        static char ID;
-        FunctionInfo() : FunctionPass(ID) { }
-        ~FunctionInfo() { }
-
-        // We don't modify the program, so we preserve all analyses
-        //Run AAResultsWrapper prior to this
-        void getAnalysisUsage(AnalysisUsage &AU) const override {
-            AU.addRequired<AAResultsWrapperPass>();
-            AU.setPreservesAll();
-        }
-
-        //Initialise
-        bool doInitialization(Module &M) override {
-            errs() << "15745 Project Alias Analysis Pass\n"; // TODO: remove this.
-            P.reset(new AAEvaluator());
-            return false;
-        }
-
-        // Main run function
-        bool runOnFunction(Function &F) override {
-            P->runInternal(F, getAnalysis<AAResultsWrapperPass>().getAAResults());
-            return false;
-        }
-
-        //Invoke destructor
-        bool doFinalization(Module &M) override {
-            P.reset();
-            return false;
-        } 
-  };
-}
-
-// LLVM uses the address of this static member to identify the pass, so the
-// initialization value is unimportant.
-char FunctionInfo::ID = 0;
-static RegisterPass<FunctionInfo> X("my-aa-eval", "15745: Function Information", false, false);
