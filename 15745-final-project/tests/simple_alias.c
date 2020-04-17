@@ -6,7 +6,7 @@ int main(){
     //   x[i] = 3*i;
     //}
 
-    printf("%d, %d\n", x[0], x[1]);
+    printf("%d, %d, %d\n", x[0], x[1], x[2]);
     //int k = 0x50;
     //int j = 2;
 

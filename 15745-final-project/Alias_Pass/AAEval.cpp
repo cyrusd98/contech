@@ -88,9 +88,8 @@ static inline bool isInterestingPointer(Value *V) {
            && !isa<ConstantPointerNull>(V));
 }
 
-void AAEvaluator::runInternal(Function &F, AAResults &AA) {
+void AAEval::run(Function &F, AAResults &AA) {
     const DataLayout &DL = F.getParent()->getDataLayout();
-    errs() << "\n\n\n hello\n\n\n";
     ++FunctionCount;
 
     SetVector<Value *> Pointers;
@@ -355,11 +354,11 @@ static void PrintPercent(int64_t Num, int64_t Sum) {
 }
  
 //Destructor for AAEvaluator class
-AAEvaluator::~AAEvaluator() {
+AAEval::~AAEval() {
     if (FunctionCount == 0) {
         return;
     }
- 
+
     int64_t AliasSum =
             NoAliasCount + MayAliasCount + PartialAliasCount + MustAliasCount;
 

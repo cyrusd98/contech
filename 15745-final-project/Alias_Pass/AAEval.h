@@ -3,13 +3,14 @@
  
 #include "llvm/IR/Function.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Pass.h"
 #include <vector>
 
 using namespace std;
+using namespace llvm;
 
-namespace llvm {
-class AAResults;
-class AAEvaluator : public PassInfoMixin<AAEvaluator> {
+class AAEval {
     int64_t FunctionCount;
     int64_t NoAliasCount, MayAliasCount, PartialAliasCount, MustAliasCount;
     int64_t NoModRefCount, ModCount, RefCount, ModRefCount;
@@ -18,17 +19,16 @@ class AAEvaluator : public PassInfoMixin<AAEvaluator> {
 public:
     vector<pair<Value*, Value*>> MustAliasPairs;
 
-    AAEvaluator()
+    AAEval()
        : FunctionCount(), NoAliasCount(), MayAliasCount(), PartialAliasCount(),
          MustAliasCount(), NoModRefCount(), ModCount(), RefCount(),
          ModRefCount(), MustCount(), MustRefCount(), MustModCount(),
          MustModRefCount() {};
 
-    ~AAEvaluator();
+    ~AAEval();
     
-    void runInternal(Function &F, AAResults &AA);
+    void run(Function &F, AAResults &AA);
 };
-}
 
  
 #endif
